@@ -4,16 +4,13 @@ jobs:
   build:
     strategy:
       matrix:
-        platform: [windows-latest]
+        platform: [windows-2019]
     runs-on: ${{ matrix.platform }}
     env:
       CMAKE_PRESET: windows-release
     steps:
-      - uses: actions/cache@v3
       - name: Checkout Current Branch
         uses: actions/checkout@v2
-        with:
-          submodules: true
       - name: Run CMake
         uses: lukka/run-cmake@v10
         with:

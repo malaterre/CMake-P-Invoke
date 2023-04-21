@@ -19,8 +19,7 @@
       "description": "Configure with Windows release settings",
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "VCPKG_DEFAULT_TRIPLET": "x64-windows"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     }
   ],
