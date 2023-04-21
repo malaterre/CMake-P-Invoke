@@ -1,0 +1,22 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform: [windows-latest]
+    runs-on: ${{ matrix.platform }}
+    env:
+      CMAKE_PRESET: windows-release
+    steps:
+      - uses: actions/cache@v3
+      - name: Checkout Current Branch
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Run CMake
+        uses: lukka/run-cmake@v10
+        with:
+          cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+          configurePreset: '${{ env.CMAKE_PRESET }}'
+          buildPreset: '${{ env.CMAKE_PRESET }}'
