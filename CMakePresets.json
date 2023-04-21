@@ -11,7 +11,7 @@
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
       "installDir": "${sourceDir}/install/${presetName}",
-	  "generator": "NMake Makefiles"
+	  "generator": "Visual Studio 16 2019"
     },
     {
       "name": "windows-release",
