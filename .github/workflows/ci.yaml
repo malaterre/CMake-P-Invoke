@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout Current Branch
         uses: actions/checkout@v2
+      - name: Print CMake Version
+        run: cmake --version
       - name: Run CMake
         uses: lukka/run-cmake@v10
         with:
