@@ -2,10 +2,30 @@
 
 extern "C" {
 typedef int (*FillBuffer)();
+typedef int (*WriteBuffer)(int);
 }
 
 namespace details
 {
+    class dotnetstream2
+    {
+        WriteBuffer writebuffer_;
+        char* buffer_;
+        int size_;
+
+    public:
+        explicit dotnetstream2(WriteBuffer writebuffer, char* buffer, int size) : writebuffer_(writebuffer), buffer_(buffer), size_(size)
+        {
+        }
+        int size() { return size_; }
+        char* buffer() { return buffer_; }
+        int write(int count)
+        {
+            const int ret = (*writebuffer_)(count);
+            return ret;
+        }
+    };
+
     class dotnetstream
     {
         FillBuffer fillbuffer_;
@@ -22,6 +42,48 @@ namespace details
         {
             const int ret = (*fillbuffer_)();
             return ret;
+        }
+    };
+
+    class customstreambuf2 : public std::streambuf
+    {
+        dotnetstream2* stream_;
+    public:
+        explicit customstreambuf2(dotnetstream2* stream) : stream_(stream)
+        {
+            // -1 to prevent re-allocation:
+            this->setp(this->stream_->buffer(), this->stream_->buffer() + this->stream_->size() - 1);
+        }
+    private:
+        int overflow(int_type i) override
+        {
+            if (!traits_type::eq_int_type(i, traits_type::eof()))
+            {
+                *pptr() = traits_type::to_char_type(i);
+                pbump(1);
+
+                if (flush())
+                {
+                    pbump(-(pptr() - pbase()));
+                    return i;
+                }
+                else
+                    return traits_type::eof();
+            }
+            return traits_type::not_eof(i);
+        }
+
+        int sync() override
+        {
+            return flush() ? 0 : -1;
+        }
+
+        // helper:
+        bool flush()
+        {
+            const int num = pptr() - pbase();
+            const int size = this->stream_->write(num);
+            return size == num;
         }
     };
 
@@ -75,6 +137,30 @@ __declspec(dllexport) void play(struct dotnetstream* stream)
         details::customstreambuf sbuf(s);
         std::istream in(&sbuf);
         std::cout << in.rdbuf() << std::endl;
+    }
+}
+
+__declspec(dllexport) struct dotnetstream2* create_dotnetstream2(WriteBuffer writeBuffer, char* buffer, int size)
+{
+    return reinterpret_cast<struct dotnetstream2*>(new details::dotnetstream2(writeBuffer, buffer, size));
+}
+
+__declspec(dllexport) void delete_dotnetstream2(struct dotnetstream2* stream)
+{
+    delete reinterpret_cast<details::dotnetstream2*>(stream);
+}
+
+
+__declspec(dllexport) void play2(struct dotnetstream2* stream)
+{
+    details::dotnetstream2* s = reinterpret_cast<details::dotnetstream2*>(stream);
+
+    // play
+    {
+        details::customstreambuf2 sbuf(s);
+        std::ostream out(&sbuf);
+        out << "ABCDEF";
+        out.flush();
     }
 }
 }
