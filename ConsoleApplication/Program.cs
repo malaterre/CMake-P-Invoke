@@ -1,6 +1,5 @@
 ﻿using Microsoft.Win32.SafeHandles;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -14,7 +13,6 @@ namespace ConsoleApplication
             : base(ownsHandle: true)
         {
         }
-
         protected override bool ReleaseHandle()
         {
             NativeMethods.delete_dotnetstream(handle);
@@ -24,60 +22,56 @@ namespace ConsoleApplication
 
     internal static class NativeMethods
     {
-        // Returns the SafeHandle instead of IntPtr
         [DllImport("NativeLibrary")]
-        internal extern static MySafeHandle create_dotnetstream();
+        internal extern static MySafeHandle create_dotnetstream(IntPtr callback, [In] byte[] buffer, [In] int buffering);
 
         [DllImport("NativeLibrary")]
         internal extern static void delete_dotnetstream(IntPtr handle);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        internal delegate int ReadFunctionDelegate(ref IntPtr buffer, int count);
+        internal delegate int ReadFunctionDelegate();
 
         [DllImport("NativeLibrary")]
-        internal extern static void setup_dotnetstream(MySafeHandle handle, IntPtr callback, [In] byte[] buffer, [In] int buffering);
+        internal extern static void play(MySafeHandle handle);
+
     }
 
-    public sealed class MyFileWrapper : IDisposable
+    public sealed class BufferedStreamWrapper : IDisposable
     {
         private readonly Stream _input; // keep reference to avoid garabage collection
         private readonly MySafeHandle _handle;
+        private readonly NativeMethods.ReadFunctionDelegate _rf;
 
         // System.IO.Stream expects an input byte[] to read into,
         // since we do not want to go the `unsafe` road, create one here:
-        // also define the buffering implicitely:
+        // this also define the buffering (aka `setvbuf`) implicitely:
         // https://stackoverflow.com/questions/1862982/c-sharp-filestream-optimal-buffer-size-for-writing-large-files
         private readonly byte[] _buffer = new byte[4096];
 
-        public MyFileWrapper(Stream input)
+        public BufferedStreamWrapper(Stream input)
         {
             _input = input;
-            _handle = NativeMethods.create_dotnetstream();
-            NativeMethods.ReadFunctionDelegate rf = this.MyRead;
-            var ptr = Marshal.GetFunctionPointerForDelegate(rf);
-            _buffer[0] = (byte) 'A';
-            _buffer[1] = (byte)'B';
-            _buffer[2] = (byte)'C';
-            NativeMethods.setup_dotnetstream(_handle, ptr, _buffer, _buffer.Length);
+            _rf = this.FillBuffer;
+            _handle = NativeMethods.create_dotnetstream(Marshal.GetFunctionPointerForDelegate(_rf), _buffer, _buffer.Length);
         }
 
-        private int MyRead(ref IntPtr outbuffer, int count)
+        private int FillBuffer()
         {
-            // programmer error:
-            Debug.Assert(count == _buffer.Length);
             try
             {
-                int ret = _input.Read(_buffer, 0, _buffer.Length);
-                Marshal.Copy(_buffer, 0, outbuffer, ret);
-                return ret;
+                return _input.Read(_buffer, 0, _buffer.Length);
             }
             catch
             {
             // https://www.mono-project.com/docs/advanced/pinvoke/#runtime-exception-propagation
             // https://github.com/dotnet/runtime/issues/4756
-
                 return -1;
             }
+        }
+
+        public void Play()
+        {
+            NativeMethods.play(_handle);
         }
 
         // - There is no need to implement a finalizer, MySafeHandle already has one
@@ -90,17 +84,11 @@ namespace ConsoleApplication
 
     class Program
     {
-        [DllImport("NativeLibrary.dll")]
-        public static extern void HelloWorld();
-
-        [DllImport("NativeLibrary.dll")]
-        public static extern void SetStream(IntPtr stream);
-
         static void Main(string[] args)
         {
-            HelloWorld();
-            var fs = new FileStream("README.md", FileMode.Open);
-            var w = new MyFileWrapper(fs);
+            var fs = new FileStream("C:/Users/mmalaterre/clario/CMake-P-Invoke/README.md", FileMode.Open);
+            var w = new BufferedStreamWrapper(fs);
+            w.Play();
         }
     }
 }
