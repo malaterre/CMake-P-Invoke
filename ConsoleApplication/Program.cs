@@ -116,7 +116,7 @@ namespace ConsoleApplication
         // since we do not want to go the `unsafe` road, create one here:
         // this also define the buffering (aka `setvbuf`) implicitely:
         // https://stackoverflow.com/questions/1862982/c-sharp-filestream-optimal-buffer-size-for-writing-large-files
-        private readonly byte[] _buffer = new byte[2];
+        private readonly byte[] _buffer = new byte[4096];
 
         public BufferedStreamWrapper2(Stream output)
         {

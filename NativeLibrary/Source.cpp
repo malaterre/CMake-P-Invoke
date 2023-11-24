@@ -45,26 +45,29 @@ namespace details
         }
     };
 
+    // https://stackoverflow.com/questions/22116158/whats-wrong-with-this-stream-buffer
     class customstreambuf2 : public std::streambuf
     {
         dotnetstream2* stream_;
     public:
         explicit customstreambuf2(dotnetstream2* stream) : stream_(stream)
         {
-            // -1 to prevent re-allocation:
+            // -1 trick:
             this->setp(this->stream_->buffer(), this->stream_->buffer() + this->stream_->size() - 1);
         }
     private:
-        int overflow(int_type i) override
+        int_type overflow(int_type i) override
         {
             if (!traits_type::eq_int_type(i, traits_type::eof()))
             {
+                // see -1 trick in cstor:
                 *pptr() = traits_type::to_char_type(i);
                 pbump(1);
 
                 if (flush())
                 {
-                    pbump(-(pptr() - pbase()));
+                    //pbump(-(pptr() - pbase()));
+                    pbump(-this->stream_->size());
                     return i;
                 }
                 else
