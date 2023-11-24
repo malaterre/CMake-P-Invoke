@@ -40,7 +40,6 @@ namespace ConsoleApplication
     {
         private readonly Stream _input; // keep reference to avoid garabage collection
         private readonly MySafeHandle _handle;
-        private readonly NativeMethods.ReadFunctionDelegate _rf;
 
         // System.IO.Stream expects an input byte[] to read into,
         // since we do not want to go the `unsafe` road, create one here:
@@ -51,8 +50,8 @@ namespace ConsoleApplication
         public BufferedStreamWrapper(Stream input)
         {
             _input = input;
-            _rf = this.FillBuffer;
-            _handle = NativeMethods.create_dotnetstream(Marshal.GetFunctionPointerForDelegate(_rf), _buffer, _buffer.Length);
+            NativeMethods.ReadFunctionDelegate rf = this.FillBuffer;
+            _handle = NativeMethods.create_dotnetstream(Marshal.GetFunctionPointerForDelegate(rf), _buffer, _buffer.Length);
         }
 
         private int FillBuffer()
