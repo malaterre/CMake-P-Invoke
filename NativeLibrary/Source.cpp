@@ -18,6 +18,7 @@ namespace details {
     class dotnetstream {
     public:
         ReadFunction readfunction_;
+        char* buffer_;
         int buffersize;
         int read(char* buffer) {
             const int ret = (*readfunction_)(&buffer, buffersize);
@@ -29,22 +30,22 @@ namespace details {
     class compressbuf
         : public std::streambuf {
         dotnetstream* stream_;
-        char* buffer_;
+        //char* buffer_;
         // context for the compression
     public:
         compressbuf(dotnetstream* stream)
-            : stream_(stream), buffer_(new char[stream->buffersize]) {
+            : stream_(stream)/*, buffer_(new char[stream->buffersize])*/ {
             // initialize compression context
         }
-        ~compressbuf() { delete[] this->buffer_; }
+        //~compressbuf() { delete[] this->buffer_; }
         int underflow() {
             if (this->gptr() == this->egptr()) {
                 // decompress data into buffer_, obtaining its own input from
                 // this->sbuf_; if necessary resize buffer
                 // the next statement assumes "size" characters were produced (if
                 // no more characters are available, size == 0.
-                const int size = this->stream_->read(this->buffer_);
-                this->setg(this->buffer_, this->buffer_, this->buffer_ + size);
+                const int size = this->stream_->read(this->stream_->buffer_);
+                this->setg(this->stream_->buffer_, this->stream_->buffer_, this->stream_->buffer_ + size);
             }
             return this->gptr() == this->egptr()
                 ? std::char_traits<char>::eof()
@@ -63,9 +64,10 @@ extern "C" {
     __declspec(dllexport) void delete_dotnetstream(struct dotnetstream* stream) {
         delete reinterpret_cast<details::dotnetstream*>(stream);
     }
-    __declspec(dllexport) void setup_dotnetstream(struct dotnetstream* stream, ReadFunction readFunction, int buffering) {
+    __declspec(dllexport) void setup_dotnetstream(struct dotnetstream* stream, ReadFunction readFunction, char* buffer, int buffering) {
         details::dotnetstream* s = reinterpret_cast<details::dotnetstream*>(stream);
         s->readfunction_ = readFunction;
+        s->buffer_ = buffer;
         s->buffersize = buffering;
 
         // play

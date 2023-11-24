@@ -35,7 +35,7 @@ namespace ConsoleApplication
         internal delegate int ReadFunctionDelegate(ref IntPtr buffer, int count);
 
         [DllImport("NativeLibrary")]
-        internal extern static void setup_dotnetstream(MySafeHandle handle, IntPtr callback, int buffering);
+        internal extern static void setup_dotnetstream(MySafeHandle handle, IntPtr callback, [In] byte[] buffer, [In] int buffering);
     }
 
     public sealed class MyFileWrapper : IDisposable
@@ -55,7 +55,10 @@ namespace ConsoleApplication
             _handle = NativeMethods.create_dotnetstream();
             NativeMethods.ReadFunctionDelegate rf = this.MyRead;
             var ptr = Marshal.GetFunctionPointerForDelegate(rf);
-            NativeMethods.setup_dotnetstream(_handle, ptr, _buffer.Length);
+            _buffer[0] = (byte) 'A';
+            _buffer[1] = (byte)'B';
+            _buffer[2] = (byte)'C';
+            NativeMethods.setup_dotnetstream(_handle, ptr, _buffer, _buffer.Length);
         }
 
         private int MyRead(ref IntPtr outbuffer, int count)
